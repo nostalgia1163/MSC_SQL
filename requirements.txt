@@ -1,0 +1,16 @@
+# MSC-SQL 依赖
+# 核心依赖
+openai>=1.0.0
+loguru>=0.7.0
+pydantic>=2.0.0
+
+# 向量检索（Value Retrieval 阶段）
+# sentence-transformers>=2.2.0
+# faiss-cpu>=1.7.0
+
+# 数据处理
+numpy>=1.24.0
+
+# gRPC 服务
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
