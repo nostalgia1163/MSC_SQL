@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c070e">
+  <title>圣诞快乐 · 粉色粒子圣诞树</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      color: #ffe3ed;
+      background: #0c070e;
+      font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .card {
+      position: relative;
+      isolation: isolate;
+      min-height: 460px;
+      height: 100vh;
+      height: 100svh;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 54%, #231421 0%, #160e19 36%, transparent 70%),
+        radial-gradient(ellipse at 50% 95%, #20121a 0%, transparent 62%),
+        #09070c;
+    }
+    .frame {
+      position: absolute;
+      inset: clamp(12px, 2.4vw, 30px);
+      z-index: 1;
+      border: 1px solid #e995b346;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .corner {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-top: 1px solid #efa0ba;
+      border-left: 1px solid #efa0ba;
+      top: -1px;
+      left: -1px;
+    }
+    .corner:nth-child(2) { left: auto; right: -1px; transform: rotate(90deg); }
+    .corner:nth-child(3) { top: auto; bottom: -1px; transform: rotate(-90deg); }
+    .corner:nth-child(4) { top: auto; left: auto; right: -1px; bottom: -1px; transform: rotate(180deg); }
+    canvas {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      touch-action: none;
+      cursor: grab;
+    }
+    canvas.dragging { cursor: grabbing; }
+    header, footer {
+      position: absolute;
+      z-index: 2;
+      left: clamp(24px, 4vw, 65px);
+      right: clamp(24px, 4vw, 65px);
+      text-align: center;
+      pointer-events: none;
+    }
+    header { top: max(clamp(29px, 5.5vh, 70px), calc(env(safe-area-inset-top) + 13px)); }
+    h1 {
+      margin: 0;
+      color: #ffe6f3;
+      font: italic 400 clamp(2.05rem, min(8vw, 8.2vh), 5.8rem)/1.12 "Snell Roundhand", "Apple Chancery", "Segoe Script", Georgia, serif;
+      text-shadow: 0 0 16px #ff6db48c, 0 0 36px #df7eab45;
+    }
+    .greeting {
+      margin: 12px 0 0;
+      font-size: .875rem;
+      letter-spacing: .44em;
+      text-indent: .44em;
+      color: #ecacc3;
+    }
+    header.revealing h1, header.revealing .greeting {
+      opacity: var(--title-opacity, 0);
+      transform: translateY(var(--title-offset, 12px));
+      filter: blur(var(--title-blur, 7px));
+    }
+    footer { bottom: max(clamp(24px, 4.4vh, 58px), calc(env(safe-area-inset-bottom) + 12px)); }
+    .hint {
+      margin: 0 0 12px;
+      font-size: .8125rem;
+      letter-spacing: .1em;
+      color: #ecadca;
+    }
+    .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    button {
+      pointer-events: auto;
+      font: inherit;
+      font-size: .875rem;
+      min-height: 44px;
+      padding: 0 15px;
+      border-radius: 100px;
+      color: #ffe0ed;
+      border: 1px solid #db82a266;
+      background: #351329d9;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    button:hover { background: #68294a; border-color: #f0b1c8; }
+    button:focus-visible { outline: 2px solid #ffd9e8; outline-offset: 4px; }
+    button[aria-pressed="false"] { background: #231020; color: #e0b2c5; }
+    .symbol { display: inline-block; width: 1.25em; color: #ffaacb; }
+    #music-message { margin: 7px 0 0; font-size: .8125rem; }
+    #music-message a { color: #ffdaeb; pointer-events: auto; }
+    .still-tree {
+      position: absolute;
+      inset: 25% 15% 22%;
+      display: grid;
+      place-items: center;
+      color: #ff99c2;
+      font-size: min(20rem, 50vw, 42vh);
+      text-shadow: 0 0 60px #ff528e;
+    }
+    .still-tree[hidden] { display: none; }
+    @media (max-height: 630px) {
+      .greeting { margin-top: 8px; }
+      .hint { margin-bottom: 7px; }
+    }
+    @media (max-width: 520px) {
+      footer { left: 16px; right: 16px; }
+      button { padding: 0 9px; }
+    }
+    @media (max-width: 360px) {
+      button { padding: 0 7px; }
+    }
+    @media (max-height: 520px) and (orientation: landscape) {
+      .card { min-height: 290px; }
+      header {
+        top: 40%;
+        left: max(27px, calc(env(safe-area-inset-left) + 10px));
+        right: auto;
+        width: 29%;
+        transform: translateY(-50%);
+      }
+      h1 { font-size: clamp(1.85rem, 4.8vw, 3.5rem); }
+      footer { left: 13%; right: 13%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <canvas id="scene" role="img" aria-label="从斜上方俯拍的粉色粒子圣诞树，树身缠绕粉白色螺旋光带，空中飘着带拖尾的雪花"></canvas>
+    <div class="still-tree" id="still-tree" hidden aria-label="圣诞树">🎄</div>
+    <div class="frame" aria-hidden="true">
+      <span class="corner"></span><span class="corner"></span>
+      <span class="corner"></span><span class="corner"></span>
+    </div>
+    <header id="greeting">
+      <h1 lang="en">Merry Christmas</h1>
+      <p class="greeting">圣诞快乐</p>
+    </header>
+    <footer id="interactions" hidden>
+      <p class="hint">拖动镜头，环绕俯拍 · 点一下绽放星光</p>
+      <div class="controls">
+        <button id="sparkle" type="button"><span class="symbol" aria-hidden="true">✦</span> 星光</button>
+        <button id="snow" type="button" aria-pressed="true"><span class="symbol" aria-hidden="true">❄</span> 飘雪</button>
+        <button id="motion" type="button" aria-pressed="true"><span class="symbol" aria-hidden="true">↻</span> 动画</button>
+        <button id="music" type="button" aria-pressed="false" title="Ghiblian Magic"><span class="symbol" aria-hidden="true">♫</span> 音乐</button>
+      </div>
+      <p id="music-message" role="status" hidden>音乐暂时无法播放。<a href="https://music.apple.com/us/song/1831292105" target="_blank" rel="noopener noreferrer">打开曲目</a></p>
+    </footer>
+    <audio id="soundtrack" preload="none" loop
+      src="https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/6a/1c/8f/6a1c8fc3-b051-0fac-4774-67c3dbb6aaab/mzaf_5541768653188983312.plus.aac.p.m4a"></audio>
+    <noscript><style>#still-tree[hidden] { display: grid; }</style></noscript>
+  </main>
+  <script>
+    (() => {
+      const canvas = document.getElementById('scene');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        document.getElementById('still-tree').hidden = false;
+        return;
+      }
+
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const greeting = document.getElementById('greeting');
+      const interactions = document.getElementById('interactions');
+      const motionButton = document.getElementById('motion');
+      const snowButton = document.getElementById('snow');
+      const TAU = Math.PI * 2;
+      const random = (min, max) => min + Math.random() * (max - min);
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const cameraDistance = 3.85;
+      const targetHeight = .49;
+      const titleStart = 4.65;
+      const titleDuration = 1.35;
+      let width, height, centerX, centerY, treeHeight, focalLength;
+      let sinAngle, cosAngle, sinPitch, cosPitch;
+      let time = 0;
+      let angle = 0;
+      let pitch = .66;
+      let motion = !reducedMotion.matches;
+      let opening = motion;
+      let snow = true;
+      let pointer = null;
+      let frame = null;
+      let previousTime = null;
+      const sparks = [];
+
+      function lightSprite(color) {
+        const sprite = document.createElement('canvas');
+        sprite.width = sprite.height = 64;
+        const pen = sprite.getContext('2d');
+        const glow = pen.createRadialGradient(32, 32, 0, 32, 32, 32);
+        glow.addColorStop(0, '#fff3f8');
+        glow.addColorStop(.17, 'rgba(' + color + ',.95)');
+        glow.addColorStop(.36, 'rgba(' + color + ',.35)');
+        glow.addColorStop(1, 'rgba(' + color + ',0)');
+        pen.fillStyle = glow;
+        pen.fillRect(0, 0, 64, 64);
+        return sprite;
+      }
+
+      const palettes = ['232,146,188', '255,175,216', '255,217,237', '255,223,172', '255,247,254'];
+      const sprites = palettes.map(lightSprite);
+      const dustSprite = sprites[3];
+      const whiteSprite = sprites[4];
+
+      function profile(level) {
+        return Math.max(0, 1 - level) ** 1.03;
+      }
+
+      function treePoint(level, bearing, radialScale, size, color, ribbon = false) {
+        const radius = (profile(level) + (ribbon ? .025 : 0)) * radialScale;
+        return {
+          x: Math.cos(bearing) * radius * .46,
+          z: Math.sin(bearing) * radius * .46,
+          level, size, color, ribbon,
+          phase: random(0, TAU),
+          opacity: random(.46, 1)
+        };
+      }
+
+      const tree = [];
+      const mobile = matchMedia('(pointer: coarse)').matches;
+      const ribbonBearing = level => level * TAU * 5.15 + 1.4;
+      const ribbonPath = Array.from({length: 321}, (_, index) => {
+        const level = index / 320 * .994;
+        const bearing = ribbonBearing(level);
+        const radius = (profile(level) + .025) * .46;
+        return {x: Math.cos(bearing) * radius, z: Math.sin(bearing) * radius, level};
+      });
+      for (let i = 0; i < (mobile ? 1900 : 3200); i++) {
+        const level = Math.random() ** 1.38 * .994;
+        const scale = Math.random() < .62 ? random(.67, 1.06) : Math.sqrt(Math.random());
+        tree.push(treePoint(level, random(0, TAU), scale, random(1, 3.1), i % 5));
+      }
+      const ribbonDensity = mobile ? 1510 : 2600;
+      for (let i = 0; i < ribbonDensity; i++) {
+        const level = (i / (ribbonDensity - 1)) ** 1.18 * .994;
+        const bearing = ribbonBearing(level) + random(-.115, .115);
+        tree.push(treePoint(level + random(-.013, .013), bearing, random(.91, 1.09),
+          random(1.5, 4.6), i % 5 === 0 ? 2 : 4, true));
+      }
+      for (let i = 0; i < 62; i++) {
+        tree.push(treePoint(random(.05, .83), random(0, TAU), random(.9, 1.05),
+          random(5, 10), i % 2 ? 0 : 2));
+      }
+
+      const flakes = Array.from({ length: mobile ? 310 : 465 }, (_, index) => ({
+        x: random(-1.75, 1.75), z: random(-1.65, 1.65), offset: random(0, 2.5),
+        size: random(2.5, 7.1), speed: random(.17, .39),
+        phase: random(0, TAU), opacity: random(.53, 1), crystal: index % 6 === 0
+      })).filter(flake => Math.hypot(flake.x, flake.z) < 1.75);
+      const distantFlakes = Array.from({ length: mobile ? 400 : 820 }, () => ({
+        x: Math.random(), y: Math.random(),
+        size: random(.6, 1.45), speed: random(.008, .026)
+      }));
+      const ground = Array.from({ length: mobile ? 850 : 1550 }, () => ({
+        bearing: random(0, TAU), radius: random(0, 1) ** .73 * 1.42,
+        size: random(.75, 2.5), phase: random(0, TAU)
+      }));
+      const trunk = Array.from({ length: 100 }, () => ({
+        x: random(-1, 1), y: random(-.02, .086),
+        size: random(1.3, 3), opacity: random(.14, .52)
+      }));
+
+      function dot(sprite, x, y, radius, opacity) {
+        if (x + radius < 0 || x - radius > width || y + radius < 0 || y - radius > height) return;
+        ctx.globalAlpha = opacity;
+        ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+      }
+
+      function orientCamera() {
+        sinAngle = Math.sin(angle);
+        cosAngle = Math.cos(angle);
+        const tilt = pitch + Math.sin(time * .39) * .023;
+        cosPitch = Math.cos(tilt);
+        sinPitch = Math.sin(tilt);
+      }
+
+      // Transform fixed world positions into the moving camera's view.
+      function project(x, y, z) {
+        const forward = x * sinAngle + z * cosAngle;
+        const up = y - targetHeight;
+        const distance = cameraDistance - (forward * cosPitch + up * sinPitch);
+        const scale = focalLength / Math.max(.32, distance);
+        return {
+          x: centerX + (x * cosAngle - z * sinAngle) * scale,
+          y: centerY - (up * cosPitch - forward * sinPitch) * scale,
+          scale: scale / treeHeight,
+          forward
+        };
+      }
+
+      function drawStar(x, y, opacity) {
+        const size = Math.max(13, treeHeight * .048);
+        const pulse = .9 + .1 * Math.sin(time * 2.5);
+        ctx.save();
+        ctx.translate(x, y);
+        dot(sprites[3], 0, 0, size * 4.5, opacity * .62 * pulse);
+        dot(sprites[4], 0, 0, size * 2.2, opacity * .87 * pulse);
+        ctx.globalAlpha = opacity;
+        const points = [];
+        for (let i = 0; i < 10; i++) {
+          const bearing = i * Math.PI / 5 - Math.PI / 2;
+          const radius = i % 2 ? size * .42 : size;
+          points.push([Math.cos(bearing) * radius, Math.sin(bearing) * radius]);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < points.length; i++) {
+          const [px, py] = points[i];
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(px, py);
+          ctx.lineTo(...points[(i + 1) % points.length]);
+          ctx.closePath();
+          const fill = ctx.createLinearGradient(0, 0, px, py);
+          fill.addColorStop(0, '#fff0da');
+          fill.addColorStop(1, i % 2 ? '#d3a667' : '#fff9ed');
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawFloor(strength) {
+        if (strength <= 0) return;
+        const floor = project(0, -.066, 0);
+        const radius = treeHeight * floor.scale * 1.24;
+        ctx.globalAlpha = strength;
+        ctx.save();
+        ctx.translate(floor.x, floor.y);
+        ctx.scale(1, sinPitch * .87);
+        const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+        halo.addColorStop(0, 'rgba(255,193,222,.20)');
+        halo.addColorStop(.31, 'rgba(239,133,187,.10)');
+        halo.addColorStop(.63, 'rgba(207,82,145,.04)');
+        halo.addColorStop(1, 'rgba(207,82,145,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+        ctx.restore();
+
+        for (let i = 0; i < 200; i += 3) {
+          const point = tree[i];
+          const reflection = project(point.x * 1.15, -.072, point.z * 1.15);
+          dot(sprites[point.color], reflection.x, reflection.y,
+            (4 + point.level * 10) * reflection.scale, strength * .13 * point.opacity * (1 - point.level));
+        }
+        for (const point of ground) {
+          const bearing = point.bearing;
+          const light = project(Math.cos(bearing) * point.radius, -.083, Math.sin(bearing) * point.radius);
+          dot(dustSprite, light.x, light.y, point.size * light.scale,
+            strength * (.25 + Math.sin(point.phase + time * .9) * .16));
+        }
+        for (const point of trunk) {
+          const light = project(point.x * .04, -point.y, 0);
+          dot(sprites[0], light.x, light.y, point.size, strength * point.opacity);
+        }
+      }
+
+      function drawRibbon(reveal) {
+        const count = Math.min(ribbonPath.length, Math.floor(reveal / .994 * 320));
+        if (count < 2) return;
+        ctx.beginPath();
+        for (let i = 0; i < count; i++) {
+          const point = ribbonPath[i];
+          const light = project(point.x, point.level, point.z);
+          if (i === 0) ctx.moveTo(light.x, light.y);
+          else ctx.lineTo(light.x, light.y);
+        }
+        const weight = clamp(treeHeight / 230, .62, 1.42);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.globalAlpha = .10;
+        ctx.strokeStyle = '#f293c5';
+        ctx.lineWidth = 17 * weight;
+        ctx.stroke();
+        ctx.globalAlpha = .18;
+        ctx.strokeStyle = '#f7bee0';
+        ctx.lineWidth = 7 * weight;
+        ctx.stroke();
+        ctx.globalAlpha = .43;
+        ctx.strokeStyle = '#ffecf9';
+        ctx.lineWidth = 1.55 * weight;
+        ctx.stroke();
+      }
+
+      function drawTree(reveal, starOpacity) {
+        drawRibbon(reveal);
+        for (const point of tree) {
+          const visible = clamp((reveal - point.level) / .135, 0, 1);
+          if (visible === 0) continue;
+          const light = project(point.x, point.level, point.z);
+          const pulse = .83 + .17 * Math.sin(point.phase + time * (point.ribbon ? 2.7 : 1.8));
+          const depthLight = (point.ribbon ? .78 : .54) + light.forward * .40;
+          dot(sprites[point.color], light.x, light.y, point.size * light.scale,
+            point.opacity * pulse * depthLight * visible);
+        }
+        if (starOpacity > 0) {
+          const star = project(0, 1.047, 0);
+          drawStar(star.x, star.y, starOpacity);
+        }
+      }
+
+      function drawCrystal(x, y, size, rotation, opacity) {
+        ctx.globalAlpha = opacity;
+        ctx.strokeStyle = '#fff4fb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const bearing = rotation + i * Math.PI / 3;
+          const ux = Math.cos(bearing);
+          const uy = Math.sin(bearing);
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + ux * size, y + uy * size);
+          ctx.moveTo(x + (ux * .31 - uy * .23) * size, y + (uy * .31 + ux * .23) * size);
+          ctx.lineTo(x + ux * size * .65, y + uy * size * .65);
+          ctx.lineTo(x + (ux * .31 + uy * .23) * size, y + (uy * .31 - ux * .23) * size);
+        }
+        ctx.stroke();
+      }
+
+      function drawDistantSnow() {
+        if (!snow) return;
+        ctx.globalAlpha = .34;
+        ctx.fillStyle = '#ffe9f5';
+        ctx.beginPath();
+        const offset = sinAngle * .05 + 1;
+        for (const flake of distantFlakes) {
+          const x = (flake.x + offset) % 1 * width;
+          const y = (flake.y + time * flake.speed) % 1 * height;
+          ctx.rect(x, y, flake.size, flake.size);
+        }
+        ctx.fill();
+      }
+
+      function drawSnow(front) {
+        if (!snow) return;
+        for (const flake of flakes) {
+          const phase = time * .92 + flake.phase;
+          const x = flake.x + Math.sin(phase) * .19;
+          const z = flake.z + Math.cos(phase * .72) * .09;
+          if ((x * sinAngle + z * cosAngle > .48) !== front) continue;
+          const fall = (flake.offset + time * flake.speed) % 2.5;
+          const y = 2.44 - fall;
+          const light = project(x, y, z);
+          if (light.x < -65 || light.x > width + 65 || light.y < -65 || light.y > height + 65) continue;
+          const size = clamp(flake.size * light.scale, 2, 15);
+          const opacity = flake.opacity * Math.min(1, fall * 5, (2.5 - fall) * 4);
+          const exposure = Math.min(front ? .47 : .29, fall / flake.speed);
+          const tailPhase = phase - exposure * .92;
+          const tail = project(flake.x + Math.sin(tailPhase) * .19, y + flake.speed * exposure,
+            flake.z + Math.cos(tailPhase * .72) * .09);
+          const glow = ctx.createLinearGradient(light.x, light.y, tail.x, tail.y);
+          glow.addColorStop(0, '#fff8fd');
+          glow.addColorStop(.36, 'rgba(255,211,234,.66)');
+          glow.addColorStop(1, 'rgba(255,177,220,0)');
+          ctx.globalAlpha = opacity * (front ? .94 : .64);
+          ctx.strokeStyle = glow;
+          ctx.lineWidth = clamp(size * .53, 1.5, front ? 5.5 : 3.15);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(light.x, light.y);
+          ctx.lineTo(tail.x, tail.y);
+          ctx.stroke();
+          dot(whiteSprite, light.x, light.y, size * (front ? 2 : 1.4), opacity);
+          if (front && flake.crystal && size >= 5) {
+            drawCrystal(light.x, light.y, size * 1.08, flake.phase + time * .28, opacity * .62);
+          }
+        }
+      }
+
+      function drawSparks() {
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const spark = sparks[i];
+          const elapsed = time - spark.start;
+          if (elapsed >= spark.life) {
+            sparks.splice(i, 1);
+            continue;
+          }
+          dot(sprites[spark.color], spark.x + spark.vx * elapsed,
+            spark.y + spark.vy * elapsed + 42 * elapsed ** 2,
+            spark.size * (1 - .5 * elapsed / spark.life),
+            (1 - elapsed / spark.life) ** 1.4);
+        }
+      }
+
+      function render() {
+        const elapsed = opening ? time : titleStart + titleDuration;
+        const rise = clamp((elapsed - .22) / 3.46, 0, 1) * 1.15;
+        const starlight = clamp((elapsed - 3.82) / .65, 0, 1);
+        ctx.globalAlpha = 1;
+        ctx.clearRect(0, 0, width, height);
+        ctx.globalCompositeOperation = 'lighter';
+        orientCamera();
+        drawDistantSnow();
+        drawFloor(clamp(rise * 2.1, 0, 1));
+        drawSnow(false);
+        drawTree(rise, starlight);
+        drawSnow(true);
+        drawSparks();
+        ctx.globalAlpha = 1;
+        if (opening && elapsed < titleStart + titleDuration) {
+          const progress = clamp((elapsed - titleStart) / titleDuration, 0, 1);
+          const ease = 1 - (1 - progress) ** 3;
+          greeting.style.setProperty('--title-opacity', ease);
+          greeting.style.setProperty('--title-offset', 12 * (1 - ease) + 'px');
+          greeting.style.setProperty('--title-blur', 7 * (1 - ease) + 'px');
+        } else if (greeting.classList.contains('revealing')) {
+          greeting.classList.remove('revealing');
+          opening = false;
+        }
+      }
+
+      function animate(now) {
+        frame = null;
+        const delta = previousTime === null ? 0 : Math.min((now - previousTime) / 1000, .05);
+        previousTime = now;
+        time += delta;
+        if (motion && !pointer) angle = (angle + delta * .20) % TAU;
+        render();
+        if (motion || sparks.length) requestFrame();
+        else previousTime = null;
+      }
+
+      function requestFrame() {
+        if (frame === null) frame = requestAnimationFrame(animate);
+      }
+
+      function resize() {
+        const bounds = canvas.getBoundingClientRect();
+        const pixelRatio = Math.min(devicePixelRatio || 1, mobile ? 1.6 : 2);
+        width = bounds.width;
+        height = bounds.height;
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        const landscape = height <= 520 && width > height;
+        const top = landscape ? height * .085 : greeting.offsetTop + greeting.offsetHeight + 14;
+        const bottom = interactions.offsetTop - 9;
+        centerX = width * (landscape ? .65 : .5);
+        treeHeight = Math.max(86, Math.min((bottom - top) / 1.49,
+          width * (landscape ? .35 : width <= 520 ? .70 : .57)));
+        centerY = (top + bottom) / 2 - treeHeight * .24;
+        focalLength = treeHeight * cameraDistance;
+        render();
+      }
+
+      function burst(x, y) {
+        if (!motion) sparks.length = 0;
+        for (let i = 0; i < 66; i++) {
+          const bearing = random(0, TAU);
+          const speed = random(22, 155);
+          const distance = motion ? 0 : random(4, 55);
+          sparks.push({
+            x: x + Math.cos(bearing) * distance,
+            y: y + Math.sin(bearing) * distance,
+            vx: Math.cos(bearing) * speed, vy: Math.sin(bearing) * speed - 28,
+            color: i % 4, size: random(2, 8), life: random(.55, 1.4), start: time
+          });
+        }
+        if (motion) requestFrame();
+        else render();
+      }
+
+      function setMotion(active) {
+        motion = active;
+        motionButton.setAttribute('aria-pressed', String(motion));
+        if (motion) requestFrame();
+        else {
+          opening = false;
+          if (frame !== null) cancelAnimationFrame(frame);
+          frame = null;
+          previousTime = null;
+          sparks.length = 0;
+          render();
+        }
+      }
+
+      canvas.addEventListener('pointerdown', event => {
+        if (pointer || event.button !== 0) return;
+        pointer = {
+          id: event.pointerId, startX: event.clientX, startY: event.clientY,
+          lastX: event.clientX, lastY: event.clientY, dragged: false
+        };
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener('pointermove', event => {
+        if (pointer?.id !== event.pointerId) return;
+        if (Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) > 5) {
+          pointer.dragged = true;
+        }
+        if (!pointer.dragged) return;
+        canvas.classList.add('dragging');
+        angle = (angle + (event.clientX - pointer.lastX) * .010) % TAU;
+        pitch = clamp(pitch - (event.clientY - pointer.lastY) * .0024, .50, .86);
+        pointer.lastX = event.clientX;
+        pointer.lastY = event.clientY;
+        if (!motion) render();
+      });
+      function releasePointer(event) {
+        if (pointer?.id !== event.pointerId) return;
+        if (event.type === 'pointerup' && !pointer.dragged) {
+          const bounds = canvas.getBoundingClientRect();
+          burst(event.clientX - bounds.left, event.clientY - bounds.top);
+        }
+        pointer = null;
+        canvas.classList.remove('dragging');
+      }
+      canvas.addEventListener('pointerup', releasePointer);
+      canvas.addEventListener('pointercancel', releasePointer);
+      canvas.addEventListener('lostpointercapture', releasePointer);
+
+      document.getElementById('sparkle').addEventListener('click', () => {
+        const star = project(0, 1.047, 0);
+        burst(star.x, star.y);
+      });
+      snowButton.addEventListener('click', () => {
+        snow = !snow;
+        snowButton.setAttribute('aria-pressed', String(snow));
+        if (!motion) render();
+      });
+      motionButton.addEventListener('click', () => setMotion(!motion));
+      reducedMotion.addEventListener('change', event => setMotion(!event.matches));
+
+      const soundtrack = document.getElementById('soundtrack');
+      const musicButton = document.getElementById('music');
+      const musicMessage = document.getElementById('music-message');
+      musicButton.addEventListener('click', async () => {
+        if (!soundtrack.paused) {
+          soundtrack.pause();
+          return;
+        }
+        musicMessage.hidden = true;
+        try {
+          await soundtrack.play();
+        } catch (error) {
+          if (error.name !== 'AbortError') musicMessage.hidden = false;
+        }
+      });
+      soundtrack.addEventListener('playing', () => {
+        musicButton.setAttribute('aria-pressed', 'true');
+      });
+      soundtrack.addEventListener('pause', () => {
+        musicButton.setAttribute('aria-pressed', 'false');
+      });
+      soundtrack.addEventListener('error', () => {
+        musicButton.setAttribute('aria-pressed', 'false');
+        musicMessage.hidden = false;
+      });
+
+      interactions.hidden = false;
+      if (opening) greeting.classList.add('revealing');
+      resize();
+      setMotion(motion);
+      window.addEventListener('resize', resize);
+    })();
+  </script>
+</body>
+</html>
